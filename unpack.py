@@ -9,7 +9,7 @@ import tarfile
 import zipfile
 import gzip
 import re
-
+import time
 
 def getOptions():
     currentDir = (os.path.dirname( os.path.realpath( __file__ ) ))
@@ -24,7 +24,7 @@ def getOptions():
 (options, args)=getOptions().parse_args()
 Password = options.password
 ProblemreportPath = options.problemreport
-OutputPath = options.outputfolder
+OutputPath = options.outputfolder + "/"
 
 
 def PrepareOutputFolder():
@@ -42,11 +42,39 @@ def getMainZip():
         print repr(len(FileList)) + " problemreport(s) found"
         for file in FileList:
             print "copy Problemreport " + file + " to " + OutputPath
-            shutil.copy(file, OutputPath)
+            shutil.copy(file, OutputPath)            
+            timeout = 5;
+            WrittenFile = ""
+            while ((not os.path.exists(WrittenFile)) and (timeout > 0)):
+                WrittenFile = OutputPath + os.path.basename(file)
+                print OutputPath + os.path.basename(file) + " does not yet exists"
+                time.sleep(1)
+                timeout -= 1
+                
+                
     
 def getftplogs():
     print "get ftp logs from problemreport"
-    File = glob.glob(OutputPath + "*.zip")[0]
+    File = glob.glob(OutputPath + "*.zip")
+    if (len(File) < 1):
+        print "no zip file found in " + OutputPath
+        exit(0)
+    File = File[0]
+    os.system("unzip -P " + Password + " " + File + " -d " + OutputPath)
+    shutil.move(OutputPath + "Miscellaneous/IC Traces/ftplogs.zip", OutputPath)
+    IMTracePath = OutputPath + "IMTraces/"
+    os.makedirs(IMTracePath)
+    for file in glob.glob(OutputPath + "Miscellaneous/IM Traces/*"):
+        shutil.move(file, IMTracePath)
+    shutil.rmtree(OutputPath + "Miscellaneous")
+    
+def getIMTraces():
+    print "get the IM traces from problemreport"
+    File = glob.glob(OutputPath + "*.zip")
+    if (len(File) < 1):
+        print "no zip file found in " + OutputPath
+        exit(0)
+    File = File[0]
     os.system("unzip -P " + Password + " " + File + " -d " + OutputPath)
     shutil.move(OutputPath + "Miscellaneous/IC Traces/ftplogs.zip", OutputPath)
     shutil.rmtree(OutputPath + "Miscellaneous")
@@ -54,8 +82,12 @@ def getftplogs():
 
 def getlogandconfigfiles():
     print "get logandconfigfiles.zip"
-    File = glob.glob(OutputPath + "ftplogs.zip")[0]
-    print File
+    File = glob.glob(OutputPath + "ftplogs.zip")
+    if (len(File) < 1):
+        print "ERROR: ftplogs.zip not found"
+        exit(0)
+    File = File[0]
+    print "extract " + File
     myZip = zipfile.ZipFile(File)
     Member = myZip.namelist()[0]
     myZip.extract(Member, OutputPath)
@@ -74,15 +106,20 @@ def ExtractSyslogs():
     os.chdir(OutputPath + "home/roche/share/log/")
     os.system("gunzip syslog.* .")
     
+def DeleteOldZipFiles():
+    for file in glob.glob(OutputPath + "*.zip"):
+        os.remove(file)
+        
 def main():
-  IncludeWorkAlready = True
+  print "OutputPath: " + OutputPath
+  print "Problemreport: " + ProblemreportPath
   PrepareOutputFolder()
   getMainZip()
-  getftplogs() # not suported, ftplogs.zip has to be extracted manually
-  if (IncludeWorkAlready):
-    getlogandconfigfiles()
-    ExtractGetLogAndConfigFiles()
-    ExtractSyslogs()
+  getftplogs()
+  getlogandconfigfiles()
+  ExtractGetLogAndConfigFiles()
+  ExtractSyslogs()
+  DeleteOldZipFiles()
     
 if __name__ == '__main__':
     sys.exit(main())
