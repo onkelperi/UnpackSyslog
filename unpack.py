@@ -23,7 +23,7 @@ def getOptions():
 
 (options, args)=getOptions().parse_args()
 Password = options.password
-ProblemreportPath = options.problemreport
+Problemreport = options.problemreport
 OutputPath = options.outputfolder + "/"
 
 
@@ -33,9 +33,18 @@ def PrepareOutputFolder():
     os.makedirs(OutputPath)
 
 def getMainZip():
-    FileList = glob.glob(ProblemreportPath + "WSIM*.zip")
+    if (os.path.isfile(Problemreport)):
+        copyMainZipFile()
+    elif (os.path.exists(Problemreport)):
+        getMainZipFromPath()
+    else:
+        print "ERROR: the given Problemreport " + Problemreport + " must be a folde containing the problemreport or the problemreport (WSIM*.zip) itself"
+        exit(1)
+
+def getMainZipFromPath():
+    FileList = glob.glob(Problemreport + "WSIM*.zip")
     if (len(FileList) == 0):
-        print "Folder " + ProblemreportPath + " does not contain a suitable problemreport in the form of WSIM*.zip"
+        print "Folder " + Problemreport + " does not contain a suitable problemreport in the form of WSIM*.zip"
     elif (len(FileList) > 1):
         print "More then one problemreport found. This script can only handle one!"
     else:
@@ -44,21 +53,27 @@ def getMainZip():
             print "copy Problemreport " + file + " to " + OutputPath
             shutil.copy(file, OutputPath)            
             timeout = 5;
-            WrittenFile = ""
+            WrittenFile = OutputPath + os.path.basename(file)
             while ((not os.path.exists(WrittenFile)) and (timeout > 0)):
                 WrittenFile = OutputPath + os.path.basename(file)
                 print OutputPath + os.path.basename(file) + " does not yet exists"
                 time.sleep(1)
                 timeout -= 1
                 
-                
+def copyMainZipFile():
+    print "copy the Problemreport zip " + Problemreport + " to outputfolder " + OutputPath
+    if (re.search("WSIM.*.zip", Problemreport)):
+        shutil.copy(Problemreport, OutputPath)
+    else:
+        print "ERROR: given problemreport " + Problemreport + " is not a problemreport containing IC logs"
+        exit(1)
     
 def getftplogs():
     print "get ftp logs from problemreport"
     File = glob.glob(OutputPath + "*.zip")
     if (len(File) < 1):
         print "no zip file found in " + OutputPath
-        exit(0)
+        exit(1)
     File = File[0]
     os.system("unzip -P " + Password + " " + File + " -d " + OutputPath)
     shutil.move(OutputPath + "Miscellaneous/IC Traces/ftplogs.zip", OutputPath)
@@ -73,7 +88,7 @@ def getIMTraces():
     File = glob.glob(OutputPath + "*.zip")
     if (len(File) < 1):
         print "no zip file found in " + OutputPath
-        exit(0)
+        exit(1)
     File = File[0]
     os.system("unzip -P " + Password + " " + File + " -d " + OutputPath)
     shutil.move(OutputPath + "Miscellaneous/IC Traces/ftplogs.zip", OutputPath)
@@ -85,7 +100,7 @@ def getlogandconfigfiles():
     File = glob.glob(OutputPath + "ftplogs.zip")
     if (len(File) < 1):
         print "ERROR: ftplogs.zip not found"
-        exit(0)
+        exit(1)
     File = File[0]
     print "extract " + File
     myZip = zipfile.ZipFile(File)
@@ -112,7 +127,7 @@ def DeleteOldZipFiles():
         
 def main():
   print "OutputPath: " + OutputPath
-  print "Problemreport: " + ProblemreportPath
+  print "Problemreport: " + Problemreport
   PrepareOutputFolder()
   getMainZip()
   getftplogs()
