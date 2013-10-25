@@ -14,7 +14,7 @@ import time
 def getOptions():
     currentDir = (os.path.dirname( os.path.realpath( __file__ ) ))
     parser = OptionParser(usage="usage: %prog [options]\n\n" \
-        "The aim of this script is to help enpacking Problemreports.", version="%prog 1.01")
+        "The aim of this script is to help enpacking Problemreports.", version="%prog 1.02")
     _add = parser.add_option
     _add ("-P", "--password",      action="store",        dest="password",      default="comit",                      help="The passwort for unziping")
     _add ("-p", "--problemreport", action="store",        dest="problemreport",                                       help="folder containing the problemreport")
