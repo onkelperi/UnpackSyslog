@@ -14,7 +14,7 @@ import time
 def getOptions():
     currentDir = (os.path.dirname( os.path.realpath( __file__ ) ))
     parser = OptionParser(usage="usage: %prog [options]\n\n" \
-        "The aim of this script is to help enpacking Problemreports.\n\nIn this version it is possible to unpack problemreports in the following format:\n- Folder containing WSIM*.zip\n- WSIM*.zip (containing ftplogs.zip)\n- ftplogs.zip (containing getlogandconfigfiles.zip)\n- getlogandconfigfiles.zip (ICLog gathered with ECP command GetLogAndConfigFile)\n- Folder containing the syslog.*.gz files", version="%prog 1.03")
+        "The aim of this script is to help enpacking Problemreports.\n\nIn this version it is possible to unpack problemreports in the following format:\n- Folder containing WSIM*.zip\n- WSIM*.zip (containing ftplogs.zip)\n- ftplogs.zip (containing getlogandconfigfiles.zip)\n- getlogandconfigfiles.zip (ICLog gathered with ECP command GetLogAndConfigFile)\n- Folder containing the syslog.*.gz files", version="%prog 1.04")
     _add = parser.add_option
     _add ("-P", "--password",      action="store",        dest="password",      default="comit",                      help="The passwort for unziping")
     _add ("-p", "--problemreport", action="store",        dest="problemreport",                                       help="folder containing the problemreport")
