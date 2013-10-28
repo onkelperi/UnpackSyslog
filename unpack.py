@@ -14,7 +14,7 @@ import time
 def getOptions():
     currentDir = (os.path.dirname( os.path.realpath( __file__ ) ))
     parser = OptionParser(usage="usage: %prog [options]\n\n" \
-        "The aim of this script is to help enpacking Problemreports.\n\nIn this version it is possible to unpack problemreports in the following format:\n- WSIM*.zip\n- Folder containing WSIM*.zip", version="%prog 1.02")
+        "The aim of this script is to help enpacking Problemreports.\n\nIn this version it is possible to unpack problemreports in the following format:\n- Folder containing WSIM*.zip\n- WSIM*.zip (containing ftplogs.zip)\n- ftplogs.zip (containing getlogandconfigfiles.zip)\n- getlogandconfigfiles.zip (ICLog gathered with ECP command GetLogAndConfigFile)", version="%prog 1.02")
     _add = parser.add_option
     _add ("-P", "--password",      action="store",        dest="password",      default="comit",                      help="The passwort for unziping")
     _add ("-p", "--problemreport", action="store",        dest="problemreport",                                       help="folder containing the problemreport")
@@ -95,7 +95,7 @@ def getIMTraces():
     shutil.rmtree(OutputPath + "Miscellaneous")
     
 
-def getlogandconfigfiles():
+def GetLogAndConfigFiles():
     print "get logandconfigfiles.zip"
     File = glob.glob(OutputPath + "ftplogs.zip")
     if (len(File) < 1):
@@ -124,17 +124,96 @@ def ExtractSyslogs():
 def DeleteOldZipFiles():
     for file in glob.glob(OutputPath + "*.zip"):
         os.remove(file)
-        
+
+    
+class StateMachine:
+  class EState:
+    Error = -1
+    NotStarted = 0
+    OutputFolderPrepared = 10
+    InputEvaluated = 15
+    LogsInFolderOrMainZip = 17
+    MainZipReady = 20
+    ftpLogsReady = 30
+    LogAndConfigFilesReady = 40
+    LogAndConfigFilesExtracted = 50
+    SyslogsExtracted = 60
+    OldZipFilesDeleted = 70
+    Finish = 100
+  
+  State = EState.NotStarted
+  Success = True
+  ErrorMessage = ""
+  
+  def Run(self):
+    while (self.State != self.EState.Finish):
+      if (self.State == self.EState.NotStarted):
+        PrepareOutputFolder()
+        self.SetState(self.EState.OutputFolderPrepared)
+      if (self.State == self.EState.OutputFolderPrepared):
+        self.EvaluateInput()
+        # State is set within EvaluateInput
+      if (self.State == self.EState.LogsInFolderOrMainZip):
+        getMainZip()
+        self.SetState(self.EState.MainZipReady)
+      if (self.State == self.EState.MainZipReady):
+        getftplogs()
+        self.SetState(self.EState.ftpLogsReady)
+      if (self.State == self.EState.ftpLogsReady):
+        GetLogAndConfigFiles()
+        self.SetState(self.EState.LogAndConfigFilesReady)
+      if (self.State == self.EState.LogAndConfigFilesReady):
+        ExtractGetLogAndConfigFiles()
+        self.SetState(self.EState.LogAndConfigFilesExtracted)
+      if (self.State == self.EState.LogAndConfigFilesExtracted):
+        ExtractSyslogs()
+        self.SetState(self.EState.SyslogsExtracted)
+      if (self.State == self.EState.SyslogsExtracted):
+        DeleteOldZipFiles()
+        self.SetState(self.EState.Finish)
+      if (self.State == self.EState.Error):
+        Success = False
+        print "ERROR during unpacking problemreport!!!"
+        self.SetState(self.EState.Finish)
+      if (self.State == self.EState.Finish):
+        print "unpacking Problemreport finish"
+        print self.ErrorMessage  
+  
+  def SetState(self, NewState):
+    #print "State change from " + str(self.State) + " to " + str(NewState)
+    self.State = NewState
+  
+  def AppendErrorMessage(self, Message):
+    self.ErrorMessage = self.ErrorMessage + Message + "\n"
+    self.Success = False
+    
+  def EvaluateInput(self):    
+    if (Problemreport.find("ftplogs.zip") != -1):
+      shutil.copy(Problemreport, OutputPath)
+      self.SetState(self.EState.ftpLogsReady)
+    elif (Problemreport.find("getlogandconfigfiles.zip") != -1):
+      shutil.copy(Problemreport, OutputPath)
+      self.SetState(self.EState.LogAndConfigFilesReady)
+    elif (not Problemreport):
+      self.AppendErrorMessage("No problemreport passed")
+      self.SetState(self.EState.Error)
+    else:
+      self.SetState(self.EState.LogsInFolderOrMainZip)
+    print "Start with state: " + str(self.State)  
+    
+      
+
+
+#############################################################################33  
+
 def main():
+  print "==================== Syslog unpacker ==================================="
   print "OutputPath: " + OutputPath
   print "Problemreport: " + Problemreport
-  PrepareOutputFolder()
-  getMainZip()
-  getftplogs()
-  getlogandconfigfiles()
-  ExtractGetLogAndConfigFiles()
-  ExtractSyslogs()
-  DeleteOldZipFiles()
+  print "========================================================================"
+  MyStateMachine = StateMachine()
+  MyStateMachine.Run()
+
     
 if __name__ == '__main__':
     sys.exit(main())
