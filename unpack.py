@@ -14,7 +14,7 @@ import time
 def getOptions():
     currentDir = (os.path.dirname( os.path.realpath( __file__ ) ))
     parser = OptionParser(usage="usage: %prog [options]\n\n" \
-        "The aim of this script is to help enpacking Problemreports.\n\nIn this version it is possible to unpack problemreports in the following format:\n- Folder containing WSIM*.zip\n- WSIM*.zip (containing ftplogs.zip)\n- ftplogs.zip (containing getlogandconfigfiles.zip)\n- getlogandconfigfiles.zip (ICLog gathered with ECP command GetLogAndConfigFile)", version="%prog 1.02")
+        "The aim of this script is to help enpacking Problemreports.\n\nIn this version it is possible to unpack problemreports in the following format:\n- Folder containing WSIM*.zip\n- WSIM*.zip (containing ftplogs.zip)\n- ftplogs.zip (containing getlogandconfigfiles.zip)\n- getlogandconfigfiles.zip (ICLog gathered with ECP command GetLogAndConfigFile)\n- Folder containing the syslog.*.gz files", version="%prog 1.03")
     _add = parser.add_option
     _add ("-P", "--password",      action="store",        dest="password",      default="comit",                      help="The passwort for unziping")
     _add ("-p", "--problemreport", action="store",        dest="problemreport",                                       help="folder containing the problemreport")
@@ -29,7 +29,8 @@ OutputPath = options.outputfolder + "/"
 
 def PrepareOutputFolder():
     if (os.path.exists(OutputPath)):
-        shutil.rmtree(OutputPath)
+        if (OutputPath != "/"):
+            shutil.rmtree(OutputPath)
     os.makedirs(OutputPath)
 
 def getMainZip():
@@ -173,11 +174,13 @@ class StateMachine:
         self.SetState(self.EState.Finish)
       if (self.State == self.EState.Error):
         Success = False
-        print "ERROR during unpacking problemreport!!!"
         self.SetState(self.EState.Finish)
       if (self.State == self.EState.Finish):
-        print "unpacking Problemreport finish"
-        print self.ErrorMessage  
+        if (len(self.ErrorMessage) > 0):
+          print "ERROR"
+          print "ErrorMessage:\n" + self.ErrorMessage  
+        else:
+          print "====> unpacking Problemreport finish"
   
   def SetState(self, NewState):
     #print "State change from " + str(self.State) + " to " + str(NewState)
@@ -194,14 +197,39 @@ class StateMachine:
     elif (Problemreport.find("getlogandconfigfiles.zip") != -1):
       shutil.copy(Problemreport, OutputPath)
       self.SetState(self.EState.LogAndConfigFilesReady)
+    elif (Problemreport.find("WSIM") != -1):
+      self.SetState(self.EState.LogsInFolderOrMainZip)
+    elif (os.path.isdir(Problemreport)):
+      if (self.IsSyslogInFolder()):
+        Destination = OutputPath + "home/roche/share/log"
+        os.makedirs(Destination)
+        for foundfile in glob.glob(Problemreport + "*"):
+          shutil.copy(foundfile, Destination)
+        self.SetState(self.EState.LogAndConfigFilesExtracted)
+      elif (self.IsWSIMInFolder()):
+        self.SetState(self.EState.LogsInFolderOrMainZip)
+      else:
+        self.AppendErrorMessage("A path was passed as input but the folder does not contain any suitable logs")
+        self.SetState(self.EState.Error)    
     elif (not Problemreport):
       self.AppendErrorMessage("No problemreport passed")
       self.SetState(self.EState.Error)
     else:
-      self.SetState(self.EState.LogsInFolderOrMainZip)
-    print "Start with state: " + str(self.State)  
-    
-      
+      self.AppendErrorMessage("No problemreport passed")
+      self.SetState(self.EState.Error)
+    print "Start with state: " + str(self.State)
+  
+  def IsWSIMInFolder(self):
+    file = glob.glob(Problemreport + "WSIM*.zip")
+    if (len(file) > 0):
+      return True
+    return False  
+  
+  def IsSyslogInFolder(self):
+    for file in glob.glob(Problemreport + "*"):
+      if (file.find("syslog") != -1):
+        return True
+    return False  
 
 
 #############################################################################33  
@@ -213,6 +241,7 @@ def main():
   print "========================================================================"
   MyStateMachine = StateMachine()
   MyStateMachine.Run()
+  print "========================================================================"
 
     
 if __name__ == '__main__':
