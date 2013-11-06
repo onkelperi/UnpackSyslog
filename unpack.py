@@ -18,19 +18,23 @@ def getOptions():
     _add = parser.add_option
     _add ("-P", "--password",      action="store",        dest="password",      default="comit",                      help="The passwort for unziping")
     _add ("-p", "--problemreport", action="store",        dest="problemreport",                                       help="folder containing the problemreport")
-    _add ("-o", "--outputfolder",  action="store",        dest="outputfolder",  default="/var/log/investigation",     help="destination folder of the problemreport")
+    _add ("-o", "--outputfolder",  action="store",        dest="outputfolder",  default="syslog",     help="destination folder within ~/investigation where the problemreport is unpacked to")
     return parser
 
+OutputPathBase = os.path.expanduser("~/investigation")
 (options, args)=getOptions().parse_args()
 Password = options.password
 Problemreport = options.problemreport
-OutputPath = options.outputfolder + "/"
+OutputPath = OutputPathBase + "/" + options.outputfolder + "/"
 
 
 def PrepareOutputFolder():
+    if (not os.path.exists(OutputPathBase)):
+        print "MakeDir: " + OutputPathBase
+        os.makedirs(OutputPathBase)
     if (os.path.exists(OutputPath)):
-        if (OutputPath != "/"):
-            shutil.rmtree(OutputPath)
+        shutil.rmtree(OutputPath)
+    print "MakeDir: " + OutputPath
     os.makedirs(OutputPath)
 
 def getMainZip():
